@@ -1,5 +1,7 @@
 import requests,json,os,time,re,base64,sys
 import platform as pf
+import termcolor
+#termcolor.cprint("233",223,'red')
 try:
     import tkinter
     from tkinter import ttk
@@ -161,7 +163,7 @@ try: # 查询可选课程列表
             raise NameError("Redo query")
 except Exception as e:
     print(e)
-     # 获取选课查询链接
+    # 获取选课查询链接
     fixCookie()
     
 
@@ -169,7 +171,7 @@ except Exception as e:
     refreshCourses()
 
 selectCode=0
-print("表格数据建立完成")
+termcolor.cprint("表格数据建立完成",'green')
 print("伪交互模块启动，输入help或者h查看帮助")
 while 1:
     cmd=input(">>>")
@@ -202,7 +204,7 @@ while 1:
             print(selectCode)
         except Exception as e:
             print(e)
-            print("更新选课代码失败")
+            termcolor.cprint("更新选课代码失败",'red')
     elif cmd=="rec" or cmd=="refreshcourses":
         fixCookie()
         refreshCourses()
@@ -253,32 +255,35 @@ while 1:
             continue
         lnk = "http://jwctest.its.csu.edu.cn/jsxsd/xsxkkc/bxqjhxkOper?jx0404id=%d&xkzy=&trjf=" % selectCode
         try:
-            try:
-                do_result=ses.get(lnk,timeout=2)
-                print(lnk)
-                print(do_result)
-                print(do_result.headers)
-                print(do_result.text)
-                
-                        
-            except Exception as e:
-                print(e)
-                print("错误断点1")
-                
-            try:
-                do_json=json.loads(do_result.text)
-                while do_json["success"]!=True:
-                    try:
-                        do_result=ses.get(lnk,timeout=1)
-                        do_json=json.loads(do_result.text)
-                        print(do_json)
-                    except Exception as ex:
-                        print(ex)
-                        print("于while内部错误")
-                print("抢课成功，命令回显:",do_json)
-            except Exception as e:
-                print(e)
-                print("错误断点2,建议运行rec")
+            while 1:
+                try:
+                    do_result=ses.get(lnk,timeout=2)
+                    print(lnk)
+                    print(do_result)
+                    print(do_result.headers)
+                    print(do_result.text)
+                    
+                            
+                except Exception as e:
+                    print(e)
+                    print("错误断点1")
+                    
+                try:
+                    do_json=json.loads(do_result.text)
+                    while do_json["success"]!=True:
+                        try:
+                            do_result=ses.get(lnk,timeout=1)
+                            do_json=json.loads(do_result.text)
+                            print(do_json)
+                        except Exception as ex:
+                            print(ex)
+                            print("于while内部错误")
+                    print("抢课成功，命令回显:",do_json)
+                except Exception as e:
+                    print(e)
+                    print("错误断点2,自动运行rec")
+                    fixCookie()
+                    refreshCourses()
         except KeyboardInterrupt:
             print("通过键盘打断,抢课终止")
     elif cmd=="q" or cmd=="quit":
