@@ -31,6 +31,15 @@ import termcolor
 # with Listener(on_press=press_interrupt) as l:
 #     pass
 
+def YNSelection(YNKey, defaultVal):
+    if YNKey.lower() in ['y', 'yes', 'ye', 'true', 'ok', 'hai']:
+        return True
+    elif YNKey.lower() in ['n','not','non', 'no', 'nope', 'false', 'iie', 'iya']:
+        return False
+    else:
+        return defaultVal
+
+
 class MutithreadRush(threading.Thread):
     def __init__(self, tlnk):
         threading.Thread.__init__(self, daemon=True)
@@ -107,7 +116,7 @@ def resource_path(relative_path):
         return p+relative_path
     elif pf.system() == "Linux":
         relative_path = relative_path.replace("\\", "/")
-        return sys.path[0]+relative_path
+        return sys.path[0]+'/'+relative_path
     else:
         relative_path = relative_path.replace("\\", "/")
         return sys.path[0]+relative_path
@@ -143,7 +152,7 @@ def reAuth():
 try:  # 懒人认证功能
     authFile = open(resource_path("auth.log"), "r")
     conf1 = input("使用上次的身份验证？[Use previous authenticate?](Y/n)")
-    if conf1 != "n" and conf1 != "N" and conf1 != "no" and conf1 != "No" and conf1 != "NO" and conf1 != "oN":
+    if YNSelection(conf1, True):
         a = authFile.readlines()
         username_verify = base64.b64decode(a[0]).decode('utf-8')
 
@@ -184,34 +193,43 @@ def refreshCourses():
 
     getList_json = json.loads(getList_res.text)
     GXgetList_json = json.loads(GXgetList_res.text)
-    saveCourse("GXcourses.bak", GXgetList_json)
-    saveCourse("courses.bak", getList_json)
+    GX_Courses = saveCourse("GXcourses.bak", GXgetList_json)
+    Courses = saveCourse("courses.bak", getList_json)
+
+# ctsm 冲突说明
 
 
 def saveCourse(save_path, save_json):
+    TEMP_Courses = []
     try:
         with open(resource_path(save_path), "w") as fbak:
             pass
-        for i in getList_json["aaData"]:
-            Courses.append({
-                "Lesson_Name": i["ktmc"],
-                "Lesson_Type": i["kcmc"],
-                "Teachers": i["skls"],
-                "Study_Score": i["xf"],
-                "Time": i["sksj"],
-                "Place": i["skdd"],
-                "Remain": i["syrs"],
-                "Max": i["xxrs"],
-                "Subsidy": i["xkbtf"],  # 补贴分
-                "Request_ID": i["jx0404id"]
-            })
-            print(json.dumps(Courses[-1])+"\n")
-            with open(resource_path(save_path), "a") as fbak:
-                fbak.write(json.dumps(Courses[-1])+"\n")
+        for i in save_json["aaData"]:
+            try:
+                TEMP_Courses.append({
+                    "Lesson_Name": i["ktmc"],
+                    "Lesson_Type": i["kcmc"],
+                    "Teachers": i["skls"],
+                    "Study_Score": i["xf"],
+                    "Time": i["sksj"],
+                    "Place": i["skdd"],
+                    "Remain": i["syrs"],
+                    "Max": i["xxrs"],
+                    # "Subsidy": i["xkbtf"],  # 补贴分
+                    "Request_ID": i["jx0404id"]
+                })
+                # print(json.dumps(TEMP_Courses[-1])+"\n")
+                with open(resource_path(save_path), "a") as fbak:
+                    fbak.write(json.dumps(TEMP_Courses[-1])+"\n")
+            except Exception as e:
+                termcolor.cprint(e, 'red')
+                termcolor.cprint("Error occurred at", 'red')
+                termcolor.cprint(i, 'red')
         termcolor.cprint("Done!Results are in "+save_path, 'green')
     except Exception as e:
         print(e)
         termcolor.cprint("save Courses failed!", 'red')
+    return TEMP_Courses
 
 
 def fixCookie():
@@ -230,7 +248,7 @@ def fixCookie():
                     input("进入哪个选课页？输入序号。[Use which select page?Enter the num_tag]:"))])
                 break
             except Exception as e:
-                print(e)
+                termcolor.cprint(e, 'red')
         elif len(URLs) == 1:
             ress = ses.get("http://csujwc.its.csu.edu.cn"+URLs[0])
             break
@@ -268,122 +286,149 @@ def fixCookie():
 try:  # 查询可选课程列表
     with open(resource_path("courses.bak"), "r") as f:
         conf1 = input("使用上次的选课查询结果？[Use previous query result?](Y/n)")
-        if conf1 != "n" and conf1 != "N" and conf1 != "no" and conf1 != "No" and conf1 != "NO" and conf1 != "oN":
+        if YNSelection(conf1, True):
             for i in f.readlines():
                 Courses.append(json.loads(i))
             with open(resource_path("GXcourses.bak"), "r") as fGX:
                 for i in fGX.readlines():
                     GX_Courses.append(json.loads(i))
         else:
-            raise NameError("Redo query")
+            raise NameError("W:Redo query")
 except Exception as e:
-    print(e)
+    termcolor.cprint(e, 'red')
     # 获取选课查询链接
     fixCookie()
 
     refreshCourses()
 
 
-def SingleRush(lnk):
+def SingleRush(TEMP_sel,TEMP_gxsel=[]):
     global ses
+    done_list=[0 for i in (TEMP_sel+TEMP_gxsel)]
+
     try:
         try:
-            do_result = ses.get(lnk, timeout=2)
-            print(lnk)
-            print(do_result)
-            print(do_result.headers)
-            print(do_result.text)
-
-        except Exception as e:
-            print(e)
-            print("错误断点1")
-
-        try:
-            do_json = json.loads(do_result.text)
-            while do_json["success"] != True:
+            while 0 in done_list:
                 try:
-                    do_result = ses.get(lnk, timeout=1)
-                    do_json = json.loads(do_result.text)
-                    print(do_json)
+                    for ind,i in enumerate(TEMP_sel):
+                        lnk='http://jwctest.its.csu.edu.cn/jsxsd/xsxkkc/bxqjhxkOper?jx0404id=%d&xkzy=&trjf=' % i
+                        do_result = ses.get(lnk, timeout=1)
+                        do_json = json.loads(do_result.text)
+                        print(do_json)
+                        if do_json["success"] == True:
+                            done_list.pop(ind)
+                            TEMP_sel.pop(ind)
+                            break
+                        
+                    for ind,i in enumerate(TEMP_gxsel):
+                        lnk='http://jwctest.its.csu.edu.cn/jsxsd/xsxkkc/ggxxkxkOper?jx0404id=%d&xkzy=&trjf=' % i
+                        do_result = ses.get(lnk, timeout=1)
+                        do_json = json.loads(do_result.text)
+                        print(do_json)
+                        if do_json["success"] == True:
+                            done_list.pop(len(TEMP_sel)+ind)
+                            TEMP_gxsel.pop(ind)
+                            break # pop破坏了列表结构，因此终止
+
                 except Exception as ex:
-                    print(ex)
-                    print("于while内部错误")
+                    termcolor.cprint(ex,'red')
+                    termcolor.cprint("于while内部错误",'red')
+                    if do_result.status_code!=200:
+                        raise NameError("Non 200 Response")
             print("抢课成功，命令回显:", do_json)
         except Exception as e:
-            print(e)
-            print("错误断点2,自动运行rec")
+            termcolor.cprint(e,'red')
+            termcolor.cprint("错误断点2,自动运行rec",'red')
             fixCookie()
             refreshCourses()
             SingleRush(lnk)
     except KeyboardInterrupt:
-        print("通过键盘打断,抢课终止")
+        termcolor.cprint("通过键盘打断,抢课终止", 'yellow')
 
-current_time_table=[]
+
+current_time_table = []
+free_time = []
+
+
 def GetCurrentCoursesList():
     courses_list_html = ses.get(
         "http://csujwc.its.csu.edu.cn/jsxsd/xsxkjg/xsxkkb")
-    info_table = re.findall('''<tbody(.*?)tbody>'''[0], courses_list_html.text)
+    info_table = re.findall(
+        '''<tbody>(.*?)</tbody>.*?''', courses_list_html.text, re.S)[0]
     global current_time_table
-    for ind,per_day in enumerate(re.findall('''<tr(.*?)</tr>.*?''',info_table)):
-        if ind==0:
-            continue
-        
+    global free_time
+    free_time = []
+    for i, per_time in enumerate(re.findall('''<tr(.*?)</tr>.*?''', info_table, re.S)):
+        TEMP_course_time = []
+        for ind, per_cell in enumerate(re.findall('''<td>(.*?)</td>.*?''', per_time, re.S)):
+            # if ind == 0:
+            #     continue
+            TEMP_course_time.append(per_cell)
+            if per_cell == "&nbsp;":
+                # 前一位是这天第几节课，后一位是星期几 free time format by (course_schedule-1,week_day-1)
+                free_time.append((i, ind))
+            current_time_table.append(TEMP_course_time)
 
 
+GetCurrentCoursesList()
+print(free_time)
 
-selectCode = 0
+selectCode = []
 termcolor.cprint("表格数据建立完成", 'green')
 print("伪交互模块启动，输入help或者h查看帮助")
 while 1:
-    cmd = input(">>>")
-    if cmd == "h" or cmd == "help":
+    cmd = input(">>>").lower()
+    if cmd in ["h", "help"]:
         print("简写\t命令\t说明")
         print("h\thelp\t打印此帮助信息")
         print("e\teval\t进入eval命令执行模式，调试用")
+        print("f\tfilter\t过滤设置")
         print("s\tselect\t输入欲选课的下标序号（在新的一行里）")
         print("rec\trefreshcourses\t重新获取可选课列表")
         print("rea\trefreshauth\t重新登录")
         print("res\trefreshsession\t重新获取会话，用后自动重新登录（慎用）")
         print("sh\tshow\t命令行展示可选必选课列表，请确保命令框够大")
-        print("shgx\tshowgx\t命令行展示可选公选课列表，请确保命令框够大")
+        print("shg\tshowgx\t命令行展示可选公选课列表，请确保命令框够大")
         print("stk\tshowintkinter\t用tk库展示可选必选课列表")
-        print("stk\tshowintkinter\t用tk库展示可选公选课列表")
+        print("stkg\tshowgxintkinter\t用tk库展示可选公选课列表")
         print("d\tdo\t开始抢课，使用前请先用s设置目的课")
         print("dm\tdowithmutithread\t实验性多线程抢课")
+        print("c\tcurlist\t打印当前课表")
         print("q\tquit\t退出")
-    elif cmd == "e" or cmd == "eval":
-        print("eval模式已启动，输入q回到上级")
+    elif cmd in ["e", "eval"]:
+        termcolor.cprint("eval模式已启动，输入q回到上级",'yellow')
         try:
             while 1:
                 evalcmd = input(">>>")
                 if evalcmd == "q":
                     break
                 else:
-                    print(eval(evalcmd))
+                    termcolor.cprint(eval(evalcmd),'cyan')
         except KeyboardInterrupt:
-            print("键盘打断，回到上级")
-    elif cmd == "s" or cmd == "select":
+            termcolor.cprint("键盘打断，回到上级",'yellow')
+    elif cmd in ["s", "select"]:
         try:
-            selectCode = int(
-                Courses[int(input("下标序号（从零开始的，并不是行号）:"))]["Request_ID"])
-            print(selectCode)
+            TEMP_inp = input("下标序号（从零开始的，并不是行号，以空格隔开）:").split(' ')
+            for TEMP_per_inp in TEMP_inp:
+                selectCode = int(Courses[int(TEMP_per_inp)]["Request_ID"])
+            termcolor.cprint(selectCode,'yellow')
         except Exception as e:
-            print(e)
+            termcolor.cprint(e, 'red')
             termcolor.cprint("更新选课代码失败", 'red')
-    elif cmd == "rec" or cmd == "refreshcourses":
+    elif cmd in ["rec", "refreshcourses"]:
         fixCookie()
         refreshCourses()
-    elif cmd == "rea" or cmd == "refreshauth":
+    elif cmd in ["rea", "refreshauth"]:
         reAuth()
-    elif cmd == "res" or cmd == "refreshsession":
+    elif cmd in ["res", "refreshsession"]:
         refreshSession()
         reAuth()
-    elif cmd == "sh" or cmd == "show":
-        print("下标\t课名\t类型\t教师\t学分\t时间\t地点\t剩余人数\t人数上限\t补贴分\t请求ID")
+    elif cmd in ["sh", "show"]:
+        print("下标\t课名\t类型\t教师\t学分\t时间\t地点\t剩余人数\t人数上限\t请求ID")
         for i in range(len(Courses)):
             print(i, Courses[i]["Lesson_Name"], Courses[i]["Lesson_Type"], Courses[i]["Teachers"], Courses[i]["Study_Score"], Courses[i]
-                  ["Time"], Courses[i]["Place"], Courses[i]["Remain"], Courses[i]["Max"], Courses[i]["Subsidy"], Courses[i]["Request_ID"], sep="\t")
-    elif cmd == "stk" or cmd == "showintkinter":
+                  ["Time"], Courses[i]["Place"], Courses[i]["Remain"], Courses[i]["Max"], Courses[i]["Request_ID"], sep="\t")
+    elif cmd in ["stk", "showintkinter"]:
         if guiFlag == False:
             termcolor.cprint("Tk库尚未就绪[Tkinter is not ready]", 'red')
             continue
@@ -414,20 +459,19 @@ while 1:
         tree_view.heading("p", text="地点")
         tree_view.heading("r", text="剩余人数")
         tree_view.heading("m", text="人数上限")
-        tree_view.heading("su", text="补贴分")
+
         tree_view.heading("rid", text="请求id")
         for i in range(len(Courses)):
             tree_view.insert("", i, values=(i, Courses[i]["Lesson_Name"], Courses[i]["Lesson_Type"], Courses[i]["Teachers"], Courses[i]["Study_Score"],
-                                            Courses[i]["Time"], Courses[i]["Place"], Courses[i]["Remain"], Courses[i]["Max"], Courses[i]["Subsidy"], Courses[i]["Request_ID"]))
+                                            Courses[i]["Time"], Courses[i]["Place"], Courses[i]["Remain"], Courses[i]["Max"], Courses[i]["Request_ID"]))
         rt.mainloop()
-    elif cmd == "d" or cmd == "do":
-        if selectCode == 0:
+    elif cmd in ["d", "do"]:
+        if not any(selectCode):
             print("请先运行s以确认选课！")
             continue
-        lnk = "http://jwctest.its.csu.edu.cn/jsxsd/xsxkkc/bxqjhxkOper?jx0404id=%d&xkzy=&trjf=" % selectCode
-        SingleRush(lnk)
-    elif cmd == "dowithmutithread" or cmd == "dm":
-        if selectCode == 0:
+        SingleRush(selectCode)
+    elif cmd in ["dowithmutithread", "dm"]:
+        if not any(selectCode):
             print("请先运行s以确认选课！")
             continue
         lnk = "http://jwctest.its.csu.edu.cn/jsxsd/xsxkkc/bxqjhxkOper?jx0404id=%d&xkzy=&trjf=" % selectCode
@@ -445,7 +489,7 @@ while 1:
                     i._stop()
         except Exception as e:
             print(e)
-    elif cmd == "q" or cmd == "quit":
+    elif cmd in ["q", "quit"]:
         break
     else:
         print("无法理解的命令:", cmd)
