@@ -32,11 +32,10 @@ import termcolor
 #     pass
 
 class MutithreadRush(threading.Thread):
-    def __init__(self, tlnk):
-        threading.Thread.__init__(self, daemon=True)
+    def __init__(self,tlnk):
+        threading.Thread.__init__(self,daemon=True)
         self.is_interrupted = False
-        self.lnk = tlnk
-
+        self.lnk=tlnk
     def run(self):
         global ses
 
@@ -145,8 +144,6 @@ try:  # 懒人认证功能
     conf1 = input("使用上次的身份验证？[Use previous authenticate?](Y/n)")
     if conf1 != "n" and conf1 != "N" and conf1 != "no" and conf1 != "No" and conf1 != "NO" and conf1 != "oN":
         a = authFile.readlines()
-        username_verify = base64.b64decode(a[0]).decode('utf-8')
-
         AuthData = {"encoded": bytes(
             a[0], "utf-8")+b'%%%'+bytes(a[1], "utf-8")}
         reAuth()
@@ -156,7 +153,6 @@ try:  # 懒人认证功能
 except Exception as e:
     print(e)
     id = input("请输入账号：\n")
-    username_verify = id
     id = bytes(id, encoding='utf-8')
     pwd = input("输入密码：\n")
     pwd = bytes(pwd, encoding='utf-8')
@@ -169,28 +165,18 @@ except Exception as e:
                 "\n" + str(base64.b64encode(pwd), "utf-8"))
 
 Courses = []
-GX_Courses = []
 
 
 def refreshCourses():
     global Courses
     Courses = []
-    global GX_Courses
-    GX_Courses = []
     # ses.headers["Referer"]="http://jwctest.its.csu.edu.cn/jsxsd/xsxkkc/comeInBxqjhxk"
     getList_res = ses.post(getList_lnk, data=getList_dt)
-    GXgetList_res = ses.post(GX_lnk, data=getList_dt)
+    # print(getList_res.text)
     print("=====================")
-
     getList_json = json.loads(getList_res.text)
-    GXgetList_json = json.loads(GXgetList_res.text)
-    saveCourse("GXcourses.bak", GXgetList_json)
-    saveCourse("courses.bak", getList_json)
-
-
-def saveCourse(save_path, save_json):
     try:
-        with open(resource_path(save_path), "w") as fbak:
+        with open(resource_path("courses.bak"), "w") as fbak:
             pass
         for i in getList_json["aaData"]:
             Courses.append({
@@ -206,20 +192,19 @@ def saveCourse(save_path, save_json):
                 "Request_ID": i["jx0404id"]
             })
             print(json.dumps(Courses[-1])+"\n")
-            with open(resource_path(save_path), "a") as fbak:
+            with open(resource_path("courses.bak"), "a") as fbak:
                 fbak.write(json.dumps(Courses[-1])+"\n")
-        termcolor.cprint("Done!Results are in "+save_path, 'green')
+        print("Done!Results are in courses.bak")
     except Exception as e:
         print(e)
-        termcolor.cprint("save Courses failed!", 'red')
+        print("refresh Courses failed!")
 
 
 def fixCookie():
     retryTime = 0
     while 1:
         res = ses.get("http://csujwc.its.csu.edu.cn/jsxsd/xsxk/xklc_list")
-        if res.text.find(username_verify) == -1:
-            reAuth()
+        #print(res.text)
         URLs = re.findall(
             r'<a\shref="(.*?)"\starget="blank">进入选课</a>', res.text)
         if len(URLs) > 1:
@@ -242,17 +227,8 @@ def fixCookie():
     getFakeList_lnk = "http://jwctest.its.csu.edu.cn" + \
         re.findall(
             '''<a href="(.*?)" target="mainFrame">本学期计划选课</a>.*?''', ress.text)[0]
-    GXList_lnk = "http://jwctest.its.csu.edu.cn" + \
-        re.findall(
-            '''<a href="(.*?)" target="mainFrame">公选课选课</a>.*?''', ress.text)[0]
     tempR = ses.get(getFakeList_lnk).text
-    tempG = ses.get(GXList_lnk).text
-
-    global getList_lnk  # 必选课
-    global GX_lnk  # 公选课
-    GX_lnk = "http://jwctest.its.csu.edu.cn" + \
-        re.findall('''"sAjaxSource":"(.*?)"\\+param,.*?''',
-                   tempG)[0]+"?kcxx=&skls=&skxq=&skjc=&sfym=false&sfct=false"
+    global getList_lnk
     getList_lnk = "http://jwctest.its.csu.edu.cn" + \
         re.findall('''"sAjaxSource":"(.*?)"\\+param,.*?''',
                    tempR)[0]+"?kcxx=&skls=&skxq=&skjc=&sfym=false&sfct=false"
@@ -271,9 +247,7 @@ try:  # 查询可选课程列表
         if conf1 != "n" and conf1 != "N" and conf1 != "no" and conf1 != "No" and conf1 != "NO" and conf1 != "oN":
             for i in f.readlines():
                 Courses.append(json.loads(i))
-            with open(resource_path("GXcourses.bak"), "r") as fGX:
-                for i in fGX.readlines():
-                    GX_Courses.append(json.loads(i))
+
         else:
             raise NameError("Redo query")
 except Exception as e:
@@ -318,18 +292,6 @@ def SingleRush(lnk):
     except KeyboardInterrupt:
         print("通过键盘打断,抢课终止")
 
-current_time_table=[]
-def GetCurrentCoursesList():
-    courses_list_html = ses.get(
-        "http://csujwc.its.csu.edu.cn/jsxsd/xsxkjg/xsxkkb")
-    info_table = re.findall('''<tbody(.*?)tbody>'''[0], courses_list_html.text)
-    global current_time_table
-    for ind,per_day in enumerate(re.findall('''<tr(.*?)</tr>.*?''',info_table)):
-        if ind==0:
-            continue
-        
-
-
 
 selectCode = 0
 termcolor.cprint("表格数据建立完成", 'green')
@@ -344,10 +306,8 @@ while 1:
         print("rec\trefreshcourses\t重新获取可选课列表")
         print("rea\trefreshauth\t重新登录")
         print("res\trefreshsession\t重新获取会话，用后自动重新登录（慎用）")
-        print("sh\tshow\t命令行展示可选必选课列表，请确保命令框够大")
-        print("shgx\tshowgx\t命令行展示可选公选课列表，请确保命令框够大")
-        print("stk\tshowintkinter\t用tk库展示可选必选课列表")
-        print("stk\tshowintkinter\t用tk库展示可选公选课列表")
+        print("sh\tshow\t命令行展示可选课列表，请确保命令框够大")
+        print("stk\tshowintkinter\t用tk库展示可选课列表")
         print("d\tdo\t开始抢课，使用前请先用s设置目的课")
         print("dm\tdowithmutithread\t实验性多线程抢课")
         print("q\tquit\t退出")
@@ -424,13 +384,13 @@ while 1:
         if selectCode == 0:
             print("请先运行s以确认选课！")
             continue
-        lnk = "http://jwctest.its.csu.edu.cn/jsxsd/xsxkkc/bxqjhxkOper?jx0404id=%d&xkzy=&trjf=" % selectCode
+        lnk = "http://jwctest.its.csu.edu.cn/jsxsd/xsxkkc/ggxxkxkOper?jx0404id=%d&xkzy=&trjf=" % selectCode
         SingleRush(lnk)
     elif cmd == "dowithmutithread" or cmd == "dm":
         if selectCode == 0:
             print("请先运行s以确认选课！")
             continue
-        lnk = "http://jwctest.its.csu.edu.cn/jsxsd/xsxkkc/bxqjhxkOper?jx0404id=%d&xkzy=&trjf=" % selectCode
+        lnk = "http://jwctest.its.csu.edu.cn/jsxsd/xsxkkc/ggxxkxkOper?jx0404id=%d&xkzy=&trjf=" % selectCode
         print("按p键终止")
         thread_list = []
         for i in range(8):
@@ -441,7 +401,7 @@ while 1:
         try:
             if any(thread_list):
                 for i in thread_list:
-                    print(len(thread_list), i)
+                    print(len(thread_list),i)
                     i._stop()
         except Exception as e:
             print(e)
