@@ -19,8 +19,7 @@ except:
         os.system("pip3 install requests")
     import requests
 
-def ErrorPrint(errmsg, *extramsg):
-    termcolor.cprint(errmsg, 'red')
+def ErrorPrint(*extramsg):
     if any(extramsg):
         for i in extramsg:
             termcolor.cprint(i, 'red')
@@ -114,23 +113,23 @@ cmd_transfer={
 }
 switch_dict={
     "h":"""EchoHelp()""",
-    "f":"""CheckAutoFiltration(Courses,GX_Courses)""",
-    "fm":"""CheckManualFiltration(Courses,GX_Courses,filter_map)""",
-    "fr":"""ResetFilter(Courses,GX_Courses,Ori_Courses,Ori_GX_Courses)""",
+    "f":"""CheckAutoFiltration(Courses,GX_Courses)""",# 可预吟唱
+    "fm":"""CheckManualFiltration(Courses,GX_Courses,filter_map)""",# 可预吟唱
+    "fr":"""ResetFilter(Courses,GX_Courses,Ori_Courses,Ori_GX_Courses)""",# 可预吟唱
     "e":"""EvalMode()""",
     "sl":"""PrintSelectedList()""",
-    "s":"""SelectCourses(select_code,_temp_list,Courses)""",
-    "sa":"""SelectAllCourses(select_code,_temp_list,Courses)""",
-    "sga":"""SelectAllCourses(select_g_code,_temp_g_list,GX_Courses)""",
-    "sg":"""SelectCourses(select_g_code,_temp_g_list,GX_Courses)""",
-    "rec":"""refreshCourses()""",
-    "rea":"""reAuth()""",
-    "res":"""refreshSession()""",
+    "s":"""SelectCourses(select_code,_temp_list,Courses)""",# 可预吟唱
+    "sa":"""SelectAllCourses(select_code,_temp_list,Courses)""",# 可预吟唱
+    "sga":"""SelectAllCourses(select_g_code,_temp_g_list,GX_Courses)""",# 可预吟唱
+    "sg":"""SelectCourses(select_g_code,_temp_g_list,GX_Courses)""",# 可预吟唱
+    "rec":"""refreshCourses()""",# 可预吟唱
+    "rea":"""reAuth()""",# 可预吟唱
+    "res":"""refreshSession()""",# 可预吟唱
     "sh":"""TerminalShow(Courses)""",
     "shg":"""TerminalShow(GX_Courses)""",
     "stk":"""TkinterShow(guiFlag,Courses)""",
     "stkg":"""TkinterShow(guiFlag,GX_Courses)""",
-    "d":"""SingleRush(select_code, select_g_code)""",
+    "d":"""SingleRush(select_code, select_g_code)""",# 可预吟唱
     "dm":"""MutithreadEntrance(select_code,select_g_code)""",
     "p":"""MutithreadExit()""",
     "c":"""PrintCurrentList()""",
@@ -149,7 +148,9 @@ select_g_code = []
 _temp_list = []
 _temp_g_list = []
 
-Pre_Execute_Flag=False
+Pre_Executable=('f','fm','fr','s','sa','sga','sg','rec','rea','res','d')
+
+Pre_Execute_Flag = False
 
 # 全局段结束 global variable declaration end
 
@@ -195,6 +196,9 @@ def getSession():
     )  # 拿JSESSIONID和BIGipServerpool_jwctest
 
 def reAuth():# 可预吟唱
+    if Pre_Execute_Flag:
+        Pre_Execute_Tasks.append("""reAuth()""")
+        return
     t=ses.post(url="http://csujwc.its.csu.edu.cn/jsxsd/xk/LoginToXk", data=AuthData)
     if t.text.find("""<font color="red">用户名或密码错误</font>""")!=-1:
         ErrorPrint("用户名或密码错误")
@@ -205,10 +209,16 @@ def reAuth():# 可预吟唱
         reAuth()
 
 def refreshSession():# 可预吟唱
+    if Pre_Execute_Flag:
+        Pre_Execute_Tasks.append("""refreshSession()""")
+        return
     getSession()
     reAuth()
 
 def refreshCourses():# 可预吟唱
+    if Pre_Execute_Flag:
+        Pre_Execute_Tasks.append("""refreshCourses()""")
+        return
     fixCookie()
     global Courses
     global GX_Courses
@@ -248,17 +258,30 @@ def saveCourse(save_path, save_json):
                         "Request_ID": i["jx0404id"]
                     })
                 elif "kcxzmc" in i:
-                    TEMP_Courses.append({
-                        "Lesson_Name": i["kcmc"],
-                        "Lesson_Type": i["kcxzmc"],
-                        "Teachers": i["skls"],
-                        "Study_Score": i["xf"],
-                        "Time": i["sksj"],
-                        "Place": i["skdd"],
-                        "Remain": i["syrs"],
-                        "Max": i["xxrs"],
-                        "Request_ID": i["jx0404id"]
-                    })
+                    if i["fzmc"] is None:
+                        TEMP_Courses.append({
+                            "Lesson_Name": i["kcmc"],
+                            "Lesson_Type": i["kcxzmc"],
+                            "Teachers": i["skls"],
+                            "Study_Score": i["xf"],
+                            "Time": i["sksj"],
+                            "Place": i["skdd"],
+                            "Remain": i["syrs"],
+                            "Max": i["xxrs"],
+                            "Request_ID": i["jx0404id"]
+                        })
+                    else:
+                        TEMP_Courses.append({
+                            "Lesson_Name": i["fzmc"],
+                            "Lesson_Type": i["kcxzmc"],
+                            "Teachers": i["skls"],
+                            "Study_Score": i["xf"],
+                            "Time": i["sksj"],
+                            "Place": i["skdd"],
+                            "Remain": i["syrs"],
+                            "Max": i["xxrs"],
+                            "Request_ID": i["jx0404id"]
+                        })
                 else:
                     TEMP_Courses.append({
                         "Lesson_Name": i["kcmc"],
@@ -332,6 +355,9 @@ def fixCookie():
     # sfct 是否冲突
 
 def SingleRush(TEMP_sel=[], TEMP_gxsel=[]):# 可预吟唱
+    if Pre_Execute_Flag:
+        Pre_Execute_Tasks.append("""SingleRush(select_code, select_g_code)""")
+        return
     if not any(TEMP_sel) and not any(TEMP_gxsel):
         ErrorPrint("请先运行s或sg以确认选课！")
         return
@@ -341,8 +367,8 @@ def SingleRush(TEMP_sel=[], TEMP_gxsel=[]):# 可预吟唱
             retry_time = 0
             while any(TEMP_gxsel) or any(TEMP_sel):
                 try:
-                    if retry_time == 5:
-                        if YNSelection(input("已经尝试了5次了，继续执行直到抢到为止吗(y/N)?"), False):
+                    if retry_time == 10:
+                        if YNSelection(input("已经尝试了10次了，继续执行直到抢到为止吗(y/N)?"), False):
                             pass
                         else:
                             ErrorPrint("用户终止")
@@ -448,13 +474,25 @@ def AutoFullFiltration(TEMP_C):
     #return TEMP_C
 
 def CheckAutoFiltration(l1,l2):# 可预吟唱
-    GetCurrentCoursesList()
+    if Pre_Execute_Flag:
+        Pre_Execute_Tasks.append("""GetCurrentCoursesList()""")
+    else:
+        GetCurrentCoursesList()
     if YNSelection(input("自动过滤时间有冲突课程？(Y/n)"), True):
-        AutoTimeFiltration(free_time, l1)
-        AutoTimeFiltration(free_time, l2)
+        if Pre_Execute_Flag:
+            Pre_Execute_Tasks.append("""AutoTimeFiltration(free_time, Courses)""")
+            Pre_Execute_Tasks.append("""AutoTimeFiltration(free_time, GX_Courses)""")
+        else:
+            AutoTimeFiltration(free_time, l1)
+            AutoTimeFiltration(free_time, l2)
     if YNSelection(input("自动过滤人数已满课程？(Y/n)"), True):
-        AutoFullFiltration(l1)
-        AutoFullFiltration(l2)
+        if Pre_Execute_Flag:
+            Pre_Execute_Tasks.append("""AutoFullFiltration(Courses)""")
+            Pre_Execute_Tasks.append("""AutoFullFiltration(GX_Courses)""")
+            return
+        else:
+            AutoFullFiltration(l1)
+            AutoFullFiltration(l2)
     termcolor.cprint("剩余专业课:%d,公选课:%d"%(len(l1),len(l2)))
 
 def ManualFiltration(TEMP_k, TEMP_dictK, TEMP_C):
@@ -471,12 +509,17 @@ def CheckManualFiltration(l1,l2,filter_map):# 可预吟唱
     print("可用条目:")
     for k, v in filter_map.items():
         print("\t", k, ' : ', v)
+    global filter_rule
     filter_rule = input("请选择一个条目，输入过滤关键词：").split(' ')
     if filter_rule[0] not in filter_map:
         termcolor.cprint("无效的条目简写:"+filter_rule[0], 'red')
     else:
-        ManualFiltration(filter_rule[1], filter_map[filter_rule[0]], l1)
-        ManualFiltration(filter_rule[1], filter_map[filter_rule[0]], l2)
+        if Pre_Execute_Flag:
+            Pre_Execute_Tasks.append("""ManualFiltration(filter_rule[1], filter_map[filter_rule[0]], Courses)""")
+            Pre_Execute_Tasks.append("""ManualFiltration(filter_rule[1], filter_map[filter_rule[0]], GX_Courses)""")
+        else:
+            ManualFiltration(filter_rule[1], filter_map[filter_rule[0]], l1)
+            ManualFiltration(filter_rule[1], filter_map[filter_rule[0]], l2)
 
 def TerminalShow(TEMP_C):
     print('{0:<4.4}{1:{10}<12.12}\t{2:{10}<7.7}{3:{10}<7.7}\t{4:{10}<2.2}\t{5:{10}<16.16}{6:{10}<8.8}\t{7:<5.5}{8:<5.5}{9:<15.15}'.format(
@@ -562,9 +605,15 @@ def EchoHelp():
     print('{0:<7}{1:<22}{2}'.format("c", "curlist", "打印当前课表"))
     print('{0:<7}{1:<22}{2}'.format("q", "quit", "退出"))
 
-def SelectCourses(TEMP_s,TEMP_l,TEMP_C):# 可预吟唱
+def SelectCourses(TEMP_s,TEMP_l,TEMP_C,PRE_INP=''):# 可预吟唱
     try:
-        _temp_inp = input("下标序号（从零开始的，并不是行号，以空格隔开）:").split(' ')
+        if any(PRE_INP):
+            _temp_inp=PRE_INP
+        else:
+            _temp_inp = input("下标序号（从零开始的，并不是行号，以空格隔开）:")
+            if Pre_Execute_Flag:
+                Pre_Execute_Tasks.append("""SelectCourses""")
+        _temp_inp = _temp_inp.split(' ')
         for _temp_per_inp in _temp_inp:
             TEMP_s.append(int(TEMP_C[int(_temp_per_inp)]["Request_ID"]))
             TEMP_l.append(TEMP_C[int(_temp_per_inp)])
@@ -639,11 +688,12 @@ def MutithreadExit():
     except Exception as e:
         ErrorPrint(e)
 
-def PreExec(function_string,flg=False):
-    if flg:
-        pass
-
-    return eval(switch_dict.get(function_string,'DEFAULT'))
+def PreExec(function_string):
+    if Pre_Execute_Flag:
+        if function_string in Pre_Executable:
+            ErrorPrint("当前指令不支持欲吟唱,可用指令只有:")
+            ErrorPrint(Pre_Executable)
+    return eval(switch_dict.get(function_string,switch_dict['DEFAULT']))
 
 class MutithreadRush(threading.Thread):
     def __init__(self, tlnk):
