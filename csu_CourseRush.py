@@ -109,7 +109,12 @@ cmd_transfer={
     "dowithmutithread":"dm",
     "curlist":"c",
     "pause":"p",
-    "quit":"q"
+    "quit":"q",
+    "clear":"cl",
+    "cleargx":"clg",
+    "remove":"rm",
+    "removegx":"rmg",
+
 }
 switch_dict={
     "h":"""EchoHelp()""",
@@ -133,6 +138,10 @@ switch_dict={
     "dm":"""MutithreadEntrance(select_code,select_g_code)""",
     "p":"""MutithreadExit()""",
     "c":"""PrintCurrentList()""",
+    "cl":"""ClearSelection(_temp_list)""",
+    "clg":"""ClearSelection(_temp_g_list)""",
+    "rm":"""RemoveSelection(_temp_list)""",
+    "rmg":"""RemoveSelection(_temp_g_list)""",
     "q":"""exit(0)""",
     "DEFAULT":"""print("无法理解的命令:", cmd)"""
 }
@@ -155,6 +164,24 @@ Pre_Execute_Flag = False
 # 全局段结束 global variable declaration end
 
 # 静态函数段开始 static function declaration start
+import traceback
+def RemoveSelection(_l: list):
+    try:
+        ind = int(input("输入欲删去的暂存选课的下标>>>"))
+        if len(_l)<=ind:
+            ErrorPrint("没有对应下标的选课")
+        else:
+            _l.pop(ind)
+            select_code.pop(ind)
+            print('取消成功')
+    except:
+        termcolor.cprint(traceback.format_exc(), "red")
+
+def ClearSelection(_l: list):
+    while _l:
+        _l.clear()
+        select_code.clear()
+    print('清除成功')
 
 def YNSelection(YNKey, defaultVal):
     if YNKey.lower() in ['y', 'yes', 'ye', 'true', 'ok', 'hai']:
@@ -582,6 +609,10 @@ def EchoHelp():
         "sg", "selectgx", "输入欲选公选课的下标序号（在新的一行里）"))
     print('{0:<7}{1:<22}{2}'.format("sga", "selectgxall", "全选当前公选课列表，建议配合手动过滤"))
     print('{0:<7}{1:<22}{2}'.format("sl", "selectlist", "查看已选"))
+    print('{0:<7}{1:<22}{2}'.format("rm", "clear", "删除指定下标的已选"))
+    print('{0:<7}{1:<22}{2}'.format("rmg", "cleargx", "删除指定下标的公选已选"))
+    print('{0:<7}{1:<22}{2}'.format("cl", "clear", "清除已选"))
+    print('{0:<7}{1:<22}{2}'.format("clg", "cleargx", "清除公选已选"))
     print()
     print('{0:<7}{1:<22}{2}'.format("rec", "refreshcourses", "重新获取可选课列表"))
     print('{0:<7}{1:<22}{2}'.format("rea", "refreshauth", "重新登录"))
